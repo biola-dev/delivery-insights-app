@@ -1,15 +1,16 @@
 package com.sendgrid.deliveryinsightsapp.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import com.sendgrid.deliveryinsightsapp.domain.models.RouteHistory
-import com.sendgrid.deliveryinsightsapp.domain.models.Weather
+import com.sendgrid.deliveryinsightsapp.ui.components.ErrorMessage
+import com.sendgrid.deliveryinsightsapp.ui.components.HistoryList
+import com.sendgrid.deliveryinsightsapp.ui.components.LocationInputField
+import com.sendgrid.deliveryinsightsapp.ui.components.WeatherButton
+import com.sendgrid.deliveryinsightsapp.ui.components.WeatherInfo
 import com.sendgrid.deliveryinsightsapp.ui.viewmodels.WeatherViewModel
 
 
@@ -22,9 +23,13 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
     val dropOffWeather by viewModel.dropOffWeather.collectAsState()
     val recommendation by viewModel.recommendation.collectAsState()
     val history by viewModel.history.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // Focus Manager to clear focus on button click
+    val focusManager = LocalFocusManager.current
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Weather Delivery App") })
+        TopAppBar(title = { Text("Delivery Insightsd App") })
     }) { padding ->
         Column(
             modifier = Modifier
@@ -32,76 +37,28 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-            OutlinedTextField(
-                value = pickup,
-                onValueChange = {
-                    viewModel.onPickupChanged(it)
-                },
-                label = { Text("Pickup Location") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFE87000),
-                    unfocusedBorderColor = Color.Gray
-                )
-            )
+            LocationInputField("Pickup Location", pickup, viewModel::onPickupChanged)
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = dropOff,
-                onValueChange = { viewModel.onDropOffChanged(it) },
-                label = { Text("Drop-off Location") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFE87000),  // Orange when active
-                    unfocusedBorderColor = Color.Gray // Gray when inactive
-                )
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    viewModel.fetchWeatherData()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(Color(0xFFE87000))
+            LocationInputField("Drop-off Location", dropOff, viewModel::onDropOffChanged)
 
-            ) {
-                Text("Get Weather")
-            }
             Spacer(modifier = Modifier.height(16.dp))
-            if (pickupWeather != null && dropOffWeather != null) {
-                Text("Pickup Weather: ${formatWeather(pickupWeather!!)}")
-                Text("Drop-off Weather: ${formatWeather(dropOffWeather!!)}")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Recommendation: $recommendation", style = MaterialTheme
-                        .typography.bodyMedium
-                )
+
+            WeatherButton {
+                viewModel.fetchWeatherData()
+                focusManager.clearFocus()  // Remove focus from TextFields after button click
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (error != null) {
+                ErrorMessage(error!!)
+            } else if (pickupWeather != null && dropOffWeather != null) {
+                WeatherInfo(pickupWeather!!, dropOffWeather!!, recommendation)
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             Text("Recent Routes", style = MaterialTheme.typography.titleMedium)
-            LazyColumn {
-                items(history) { route ->
-                    HistoryItem(route)
-                }
-            }
+            HistoryList(history)
         }
     }
-}
-
-@Composable
-fun HistoryItem(route: RouteHistory) {
-    Card(
-        modifier = Modifier
-            .padding(vertical = 4.dp)
-            .fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Text("Pickup: ${route.pickup}")
-            Text("Drop-off: ${route.dropOff}")
-        }
-    }
-}
-
-private fun formatWeather(weather: Weather): String {
-    val wind = weather.windSpeed?.let { ", Wind: $it km/h" } ?: ""
-    return "Temp: ${weather.temperature}°C, Condition: ${weather.condition}$wind"
 }

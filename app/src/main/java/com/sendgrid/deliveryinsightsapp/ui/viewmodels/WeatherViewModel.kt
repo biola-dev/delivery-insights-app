@@ -8,6 +8,7 @@ import com.sendgrid.deliveryinsightsapp.domain.models.Weather
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 class WeatherViewModel(private val repository: WeatherRepository) :
     ViewModel() {
@@ -30,6 +31,9 @@ class WeatherViewModel(private val repository: WeatherRepository) :
     private val _history = MutableStateFlow<List<RouteHistory>>(emptyList())
     val history: StateFlow<List<RouteHistory>> = _history
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
 
     fun onPickupChanged(newPickup: String) {
         _pickup.value = newPickup
@@ -39,33 +43,45 @@ class WeatherViewModel(private val repository: WeatherRepository) :
         _dropOff.value = newDropOff
     }
 
+
     fun fetchWeatherData() {
         if (_pickup.value.isBlank() || _dropOff.value.isBlank()) {
             return
         }
         viewModelScope.launch {
+            try {
+                val pickupWeatherData = repository.fetchWeather(location = pickup.value)
+                val dropOffWeatherData = repository.fetchWeather(dropOff.value)
 
-            val pickupWeatherData =
-                repository.fetchWeather(location = pickup.value)
-            val dropOffWeatherData = repository.fetchWeather(dropOff.value)
+                _pickupWeather.value = pickupWeatherData
+                _dropOffWeather.value = dropOffWeatherData
 
-            _pickupWeather.value = pickupWeatherData
-            _dropOffWeather.value = dropOffWeatherData
+                _recommendation.value = getDeliveryRecommendation(pickupWeatherData)
 
-            _recommendation.value =
-                getDeliveryRecommendation(pickupWeatherData)
+                repository.addRouteHistory(RouteHistory(pickup = pickup.value, dropOff = dropOff.value))
+                _history.value = repository.getHistory()
 
-            repository.addRouteHistory(
-                RouteHistory(
-                    pickup = pickup.value,
-                    dropOff = dropOff.value
-                )
-            )
-            _history.value = repository.getHistory()
+                _pickup.value = ""
+                _dropOff.value = ""
+                _error.value = null
 
-            _pickup.value = ""
-            _dropOff.value = ""
+            } catch (e: HttpException) {
+                if (e.code() == 404) {
+                    _error.value = "Location not found"
+                } else {
+                    _error.value = "An unexpected error occurred"
+                }
 
+                _pickupWeather.value = null
+                _dropOffWeather.value = null
+                _recommendation.value = ""
+
+            } catch (e: Exception) {
+                _error.value = "An unexpected error occurred"
+                _pickupWeather.value = null
+                _dropOffWeather.value = null
+                _recommendation.value = ""
+            }
         }
     }
 

@@ -1,3 +1,11 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+// Load API key from local.properties
+val localProperties = Properties().apply {
+    load(FileInputStream(rootProject.file("local.properties")))
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,18 +14,24 @@ plugins {
     kotlin("plugin.serialization") version "2.1.10"
 }
 
+
 android {
-    namespace = "com.example.weather_app"
+    namespace = "com.sendgrid.deliveryinsightsapp"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.weather_app"
+        applicationId = "com.sendgrid.deliveryinsightsapp"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "API_KEY", "\"${localProperties["API_KEY"]}\"")
+    }
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
