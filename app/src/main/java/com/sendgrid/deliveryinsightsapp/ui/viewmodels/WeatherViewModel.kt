@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class WeatherViewModel(private val repository: WeatherRepository) : ViewModel() {
+class WeatherViewModel(private val repository: WeatherRepository) :
+    ViewModel() {
 
     private val _pickup = MutableStateFlow("")
     val pickup: StateFlow<String> = _pickup
@@ -44,20 +45,45 @@ class WeatherViewModel(private val repository: WeatherRepository) : ViewModel() 
         }
         viewModelScope.launch {
 
-                val pickupWeatherData = repository.fetchWeather(location = pickup.value)
-                val dropOffWeatherData = repository.fetchWeather(dropOff.value)
+            val pickupWeatherData =
+                repository.fetchWeather(location = pickup.value)
+            val dropOffWeatherData = repository.fetchWeather(dropOff.value)
 
-                _pickupWeather.value = pickupWeatherData
-                _dropOffWeather.value = dropOffWeatherData
+            _pickupWeather.value = pickupWeatherData
+            _dropOffWeather.value = dropOffWeatherData
 
-                /* TODO Add Recommendation Logic */
+            _recommendation.value =
+                getDeliveryRecommendation(pickupWeatherData)
 
-                repository.addRouteHistory(RouteHistory(pickup = pickup.value, dropOff = dropOff.value))
-                _history.value = repository.getHistory()
+            repository.addRouteHistory(
+                RouteHistory(
+                    pickup = pickup.value,
+                    dropOff = dropOff.value
+                )
+            )
+            _history.value = repository.getHistory()
 
-                _pickup.value = ""
-                _dropOff.value = ""
+            _pickup.value = ""
+            _dropOff.value = ""
 
+        }
+    }
+
+    private fun getDeliveryRecommendation(weather: Weather): String {
+        return when {
+            weather.condition.contains("Clear", ignoreCase = true) ||
+                    weather.condition.contains(
+                        "Light Rain",
+                        ignoreCase = true
+                    ) -> "Safe for delivery"
+
+            weather.condition.contains("Heavy Rain", ignoreCase = true) ||
+                    weather.condition.contains(
+                        "Thunderstorm",
+                        ignoreCase = true
+                    ) -> "Delay advised"
+
+            else -> "Check conditions"
         }
     }
 
