@@ -29,7 +29,7 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
     val focusManager = LocalFocusManager.current
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Delivery Insightsd App") })
+        TopAppBar(title = { Text("Delivery Insights App") })
     }) { padding ->
         Column(
             modifier = Modifier
